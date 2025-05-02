@@ -79,14 +79,21 @@
                                         <td></td>
                                     }
 
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-primary" @onclick="@(() => EditBy(m))">Edit</button>
-                                        <button class="btn btn-sm btn-danger" @onclick="@(() => DeleteBy(m))">Del</button>
-                                        @if (!SimpleMode)
-                                        {
+                                    @if (!SimpleMode)
+                                    {
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-primary" @onclick="@(() => EditBy(m))">Edit</button>
+                                            <button class="btn btn-sm btn-danger" @onclick="@(() => DeleteBy(m))">Del</button>
                                             <button class="btn btn-sm btn-warning" @onclick="@(() => ToggleBy(m))">Change Active</button>
-                                        }
-                                    </td>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-primary" @onclick="@(() => EditBy(m))">Edit</button>
+                                            <button class="btn btn-sm btn-danger" @onclick="@(() => DeleteBy(m))">Del</button>
+                                        </td>
+                                    }
                                 </tr>
                             }
                         }
