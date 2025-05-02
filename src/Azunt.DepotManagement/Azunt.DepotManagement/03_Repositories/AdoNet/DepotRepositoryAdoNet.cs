@@ -32,7 +32,12 @@ public class DepotRepositoryAdoNet : IDepotRepository
         cmd.Parameters.AddWithValue("@Name", model.Name ?? (object)DBNull.Value);
 
         await conn.OpenAsync();
-        model.Id = (long)await cmd.ExecuteScalarAsync();
+        var result = await cmd.ExecuteScalarAsync();
+        if (result == null)
+        {
+            throw new InvalidOperationException("Failed to insert Depot. No ID was returned.");
+        }
+        model.Id = (long)result;
         return model;
     }
 
