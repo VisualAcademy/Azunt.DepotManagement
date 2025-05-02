@@ -9,7 +9,7 @@ public partial class SearchBox : ComponentBase, IDisposable
 {
     #region Fields
     private string searchQuery = "";
-    private System.Timers.Timer debounceTimer;
+    private System.Timers.Timer? debounceTimer;
     #endregion
 
     #region Parameters
@@ -45,8 +45,8 @@ public partial class SearchBox : ComponentBase, IDisposable
         set
         {
             searchQuery = value;
-            debounceTimer.Stop();    // 입력 중이면 기존 타이머 중지
-            debounceTimer.Start();   // 새 타이머 시작 (입력 완료 후 실행)
+            debounceTimer?.Stop();    // 입력 중이면 기존 타이머 중지
+            debounceTimer?.Start();   // 새 타이머 시작 (입력 완료 후 실행)
         }
     }
 
@@ -64,7 +64,7 @@ public partial class SearchBox : ComponentBase, IDisposable
             Interval = Debounce,
             AutoReset = false // 한 번만 실행되도록 설정
         };
-        debounceTimer.Elapsed += SearchHandler;
+        debounceTimer.Elapsed += SearchHandler!;
     }
 
     #endregion
@@ -96,7 +96,7 @@ public partial class SearchBox : ComponentBase, IDisposable
     /// </summary>
     public void Dispose()
     {
-        debounceTimer.Dispose();
+        debounceTimer?.Dispose();
     }
 
     #endregion
