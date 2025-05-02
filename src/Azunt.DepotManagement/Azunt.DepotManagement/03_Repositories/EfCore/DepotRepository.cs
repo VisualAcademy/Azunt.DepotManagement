@@ -106,9 +106,22 @@ public class DepotRepository : IDepotRepository
             query = query.Where(m => m.Name!.Contains(searchQuery));
         }
 
+        if (!string.IsNullOrWhiteSpace(sortOrder))
+        {
+            query = sortOrder switch
+            {
+                "Name" => query.OrderBy(m => m.Name),
+                "NameDesc" => query.OrderByDescending(m => m.Name),
+                _ => query.OrderByDescending(m => m.Id) // 기본 정렬
+            };
+        }
+        else
+        {
+            query = query.OrderByDescending(m => m.Id);
+        }
+
         var totalCount = await query.CountAsync();
         var items = await query
-            .OrderByDescending(m => m.Id)
             .Skip(pageIndex * pageSize)
             .Take(pageSize)
             .ToListAsync();
