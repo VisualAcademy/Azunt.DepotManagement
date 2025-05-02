@@ -39,6 +39,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+builder.Services.AddDependencyInjectionContainerForDepotApp(
+    connectionString,
+    DepotServicesRegistrationExtensions.RepositoryMode.EfCore,
+    ServiceLifetime.Transient);
+
 var app = builder.Build();
 
 // Depots 테이블 자동 생성 (마스터 DB만)
