@@ -4,8 +4,27 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-    </PropertyGroup>
 
+        <!-- 버전 정보 -->
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <VersionSuffix></VersionSuffix>
+
+        <!-- NuGet 기본 정보 -->
+        <Title>Azunt.DepotManagement</Title>
+        <Description>Azunt.DepotManagement is a reusable .NET module for managing depots (warehouses) with full CRUD, search, sort, and export features. Supports EF Core, Dapper, and ADO.NET.</Description>
+        <PackageTags>Azunt, depot, warehouse, CRUD, EFCore, ADO.NET, Dapper, Blazor</PackageTags>
+
+        <Authors>VisualAcademy</Authors>
+        <Company>Hawaso</Company>
+
+        <!-- NuGet 링크 및 저장소 -->
+        <PackageProjectUrl>https://github.com/VisualAcademy/Azunt.DepotManagement</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/VisualAcademy/Azunt.DepotManagement</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+
+        <!-- 저작권 정보 -->
+        <Copyright>© 2025 Hawaso. All rights reserved.</Copyright>
+    </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Azunt" Version="1.0.2" />
