@@ -60,8 +60,8 @@ public partial class Manage : ComponentBase
     private async Task DisplayData()
     {
         var articleSet = ParentKey != ""
-            ? await RepositoryReference.GetArticlesAsync<string>(pager.PageIndex, pager.PageSize, "", searchQuery, sortOrder, ParentKey)
-            : await RepositoryReference.GetArticlesAsync<int>(pager.PageIndex, pager.PageSize, "", searchQuery, sortOrder, ParentId);
+            ? await RepositoryReference.GetAllAsync<string>(pager.PageIndex, pager.PageSize, "", searchQuery, sortOrder, ParentKey)
+            : await RepositoryReference.GetAllAsync<int>(pager.PageIndex, pager.PageSize, "", searchQuery, sortOrder, ParentId);
 
         pager.RecordCount = articleSet.TotalCount;
         models = articleSet.Items.ToList();

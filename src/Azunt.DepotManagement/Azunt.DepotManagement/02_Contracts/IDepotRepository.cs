@@ -11,7 +11,7 @@ public interface IDepotRepository : IDepotBaseRepository
     /// 검색 필드, 쿼리, 정렬 기준을 기준으로 페이징된 결과 반환
     /// </summary>
     /// <typeparam name="TParentIdentifier">부모 식별자 타입</typeparam>
-    Task<ArticleSet<Depot, int>> GetArticlesAsync<TParentIdentifier>(
+    Task<ArticleSet<Depot, int>> GetAllAsync<TParentIdentifier>(
         int pageIndex,
         int pageSize,
         string searchField,
@@ -23,6 +23,6 @@ public interface IDepotRepository : IDepotBaseRepository
     /// FilterOptions 기반 페이징 처리된 결과 반환
     /// </summary>
     /// <typeparam name="TParentIdentifier">부모 식별자 타입</typeparam>
-    Task<ArticleSet<Depot, long>> GetByAsync<TParentIdentifier>(
+    Task<ArticleSet<Depot, long>> GetAllAsync<TParentIdentifier>(
         FilterOptions<TParentIdentifier> options);
 }

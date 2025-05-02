@@ -112,7 +112,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
         return await cmd.ExecuteNonQueryAsync() > 0;
     }
 
-    public async Task<ArticleSet<Depot, int>> GetArticlesAsync<TParentIdentifier>(
+    public async Task<ArticleSet<Depot, int>> GetAllAsync<TParentIdentifier>(
         int pageIndex, int pageSize, string searchField, string searchQuery, string sortOrder, TParentIdentifier parentIdentifier)
     {
         var all = await GetAllAsync();
@@ -128,7 +128,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
         return new ArticleSet<Depot, int>(paged, filtered.Count());
     }
 
-    public async Task<ArticleSet<Depot, long>> GetByAsync<TParentIdentifier>(FilterOptions<TParentIdentifier> options)
+    public async Task<ArticleSet<Depot, long>> GetAllAsync<TParentIdentifier>(FilterOptions<TParentIdentifier> options)
     {
         var all = await GetAllAsync();
         var filtered = all

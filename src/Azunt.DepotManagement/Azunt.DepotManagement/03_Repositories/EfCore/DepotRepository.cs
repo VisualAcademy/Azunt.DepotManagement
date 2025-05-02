@@ -89,7 +89,7 @@ public class DepotRepository : IDepotRepository
         return await context.SaveChangesAsync() > 0;
     }
 
-    public async Task<ArticleSet<Depot, int>> GetArticlesAsync<TParentIdentifier>(
+    public async Task<ArticleSet<Depot, int>> GetAllAsync<TParentIdentifier>(
         int pageIndex,
         int pageSize,
         string searchField,
@@ -123,7 +123,7 @@ public class DepotRepository : IDepotRepository
         return new ArticleSet<Depot, int>(items, totalCount);
     }
 
-    public async Task<ArticleSet<Depot, long>> GetByAsync<TParentIdentifier>(
+    public async Task<ArticleSet<Depot, long>> GetAllAsync<TParentIdentifier>(
         FilterOptions<TParentIdentifier> options)
     {
         await using var context = CreateContext();
