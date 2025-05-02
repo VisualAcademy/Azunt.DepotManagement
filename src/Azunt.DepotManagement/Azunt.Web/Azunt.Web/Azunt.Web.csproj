@@ -8,6 +8,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Remove="Components\Pages\Depots\Components\yeib32qq.seq~" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\Azunt.DepotManagement\Azunt.DepotManagement.csproj" />
         <ProjectReference Include="..\Azunt.Web.Client\Azunt.Web.Client.csproj" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.4" />
