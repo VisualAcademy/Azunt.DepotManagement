@@ -19,9 +19,6 @@ public class DepotRepository : IDepotRepository
     private readonly ILogger<DepotRepository> _logger;
     private readonly string? _connectionString;
 
-    /// <summary>
-    /// 기본 생성자: 팩터리를 통해 기본 연결 문자열 사용
-    /// </summary>
     public DepotRepository(
         DepotAppDbContextFactory factory,
         ILoggerFactory loggerFactory)
@@ -30,9 +27,6 @@ public class DepotRepository : IDepotRepository
         _logger = loggerFactory.CreateLogger<DepotRepository>();
     }
 
-    /// <summary>
-    /// 명시적 연결 문자열을 사용하는 생성자 (멀티테넌시 지원)
-    /// </summary>
     public DepotRepository(
         DepotAppDbContextFactory factory,
         ILoggerFactory loggerFactory,
@@ -52,6 +46,7 @@ public class DepotRepository : IDepotRepository
     {
         await using var context = CreateContext();
         model.CreatedAt = DateTime.UtcNow;
+        model.IsDeleted = false;
         context.Depots.Add(model);
         await context.SaveChangesAsync();
         return model;
@@ -61,6 +56,7 @@ public class DepotRepository : IDepotRepository
     {
         await using var context = CreateContext();
         return await context.Depots
+            .Where(m => !m.IsDeleted)
             .OrderByDescending(m => m.Id)
             .ToListAsync();
     }
@@ -69,8 +65,9 @@ public class DepotRepository : IDepotRepository
     {
         await using var context = CreateContext();
         return await context.Depots
-                   .SingleOrDefaultAsync(m => m.Id == id)
-               ?? new Depot();
+            .Where(m => m.Id == id && !m.IsDeleted)
+            .SingleOrDefaultAsync()
+            ?? new Depot();
     }
 
     public async Task<bool> UpdateAsync(Depot model)
@@ -85,8 +82,10 @@ public class DepotRepository : IDepotRepository
     {
         await using var context = CreateContext();
         var entity = await context.Depots.FindAsync(id);
-        if (entity == null) return false;
-        context.Depots.Remove(entity);
+        if (entity == null || entity.IsDeleted) return false;
+
+        entity.IsDeleted = true;
+        context.Depots.Update(entity);
         return await context.SaveChangesAsync() > 0;
     }
 
@@ -99,26 +98,21 @@ public class DepotRepository : IDepotRepository
         TParentIdentifier parentIdentifier)
     {
         await using var context = CreateContext();
-        var query = context.Depots.AsQueryable();
+        var query = context.Depots
+            .Where(m => !m.IsDeleted)
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(searchQuery))
         {
-            query = query.Where(m => m.Name!.Contains(searchQuery));
+            query = query.Where(m => m.Name != null && m.Name.Contains(searchQuery));
         }
 
-        if (!string.IsNullOrWhiteSpace(sortOrder))
+        query = sortOrder switch
         {
-            query = sortOrder switch
-            {
-                "Name" => query.OrderBy(m => m.Name),
-                "NameDesc" => query.OrderByDescending(m => m.Name),
-                _ => query.OrderByDescending(m => m.Id) // 기본 정렬
-            };
-        }
-        else
-        {
-            query = query.OrderByDescending(m => m.Id);
-        }
+            "Name" => query.OrderBy(m => m.Name),
+            "NameDesc" => query.OrderByDescending(m => m.Name),
+            _ => query.OrderByDescending(m => m.Id)
+        };
 
         var totalCount = await query.CountAsync();
         var items = await query
@@ -133,11 +127,13 @@ public class DepotRepository : IDepotRepository
         FilterOptions<TParentIdentifier> options)
     {
         await using var context = CreateContext();
-        var query = context.Depots.AsQueryable();
+        var query = context.Depots
+            .Where(m => !m.IsDeleted)
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(options.SearchQuery))
         {
-            query = query.Where(m => m.Name!.Contains(options.SearchQuery));
+            query = query.Where(m => m.Name != null && m.Name.Contains(options.SearchQuery));
         }
 
         var totalCount = await query.CountAsync();

@@ -91,7 +91,8 @@ public class DepotsTableBuilder
                 var cmdCreate = new SqlCommand(@"
                     CREATE TABLE [dbo].[Depots] (
                         [Id] BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                        [Active] BIT DEFAULT ((1)) NOT NULL,
+                        [Active] BIT NOT NULL DEFAULT(1),
+                        [IsDeleted] BIT NOT NULL DEFAULT(0),
                         [CreatedAt] DATETIMEOFFSET(7) NOT NULL,
                         [CreatedBy] NVARCHAR(255) NULL,
                         [Name] NVARCHAR(MAX) NULL
@@ -105,10 +106,11 @@ public class DepotsTableBuilder
             {
                 var expectedColumns = new Dictionary<string, string>
                 {
-                    ["Active"] = "BIT",
-                    ["CreatedAt"] = "DATETIMEOFFSET(7)",
-                    ["CreatedBy"] = "NVARCHAR(255)",
-                    ["Name"] = "NVARCHAR(MAX)"
+                    ["Active"] = "BIT NOT NULL DEFAULT(1)",
+                    ["IsDeleted"] = "BIT NOT NULL DEFAULT(0)",
+                    ["CreatedAt"] = "DATETIMEOFFSET(7) NOT NULL",
+                    ["CreatedBy"] = "NVARCHAR(255) NULL",
+                    ["Name"] = "NVARCHAR(MAX) NULL"
                 };
 
                 foreach (var kvp in expectedColumns)
@@ -125,7 +127,7 @@ public class DepotsTableBuilder
                     if (colExists == 0)
                     {
                         var alterCmd = new SqlCommand(
-                            $"ALTER TABLE [dbo].[Depots] ADD [{columnName}] {kvp.Value} NULL", connection);
+                            $"ALTER TABLE [dbo].[Depots] ADD [{columnName}] {kvp.Value}", connection);
                         alterCmd.ExecuteNonQuery();
 
                         _logger.LogInformation($"Column added: {columnName} ({kvp.Value})");
@@ -139,10 +141,10 @@ public class DepotsTableBuilder
             if (rowCount == 0)
             {
                 var cmdInsertDefaults = new SqlCommand(@"
-                    INSERT INTO [dbo].[Depots] (Active, CreatedAt, CreatedBy, Name)
+                    INSERT INTO [dbo].[Depots] (Active, IsDeleted, CreatedAt, CreatedBy, Name)
                     VALUES
-                        (1, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 1'),
-                        (1, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 2')", connection);
+                        (1, 0, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 1'),
+                        (1, 0, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 2')", connection);
 
                 int inserted = cmdInsertDefaults.ExecuteNonQuery();
                 _logger.LogInformation($"Depots 기본 데이터 {inserted}건 삽입 완료");

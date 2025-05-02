@@ -23,6 +23,11 @@ namespace Azunt.DepotManagement
         public bool? Active { get; set; }
 
         /// <summary>
+        /// 소프트 삭제 플래그 (기본값: false)
+        /// </summary>
+        public bool IsDeleted { get; set; }
+
+        /// <summary>
         /// 생성 일시
         /// </summary>
         public DateTimeOffset CreatedAt { get; set; }
@@ -35,6 +40,8 @@ namespace Azunt.DepotManagement
         /// <summary>
         /// 창고 이름
         /// </summary>
+        [Required(ErrorMessage = "Name is required.")]
+        [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters.")]
         public string? Name { get; set; }
     }
 }

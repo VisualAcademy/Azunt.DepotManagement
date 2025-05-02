@@ -21,9 +21,9 @@ public class DepotRepositoryDapper : IDepotRepository
     public async Task<Depot> AddAsync(Depot model)
     {
         const string sql = @"
-            INSERT INTO Depots (Active, CreatedAt, CreatedBy, Name)
+            INSERT INTO Depots (Active, CreatedAt, CreatedBy, Name, IsDeleted)
             OUTPUT INSERTED.Id
-            VALUES (@Active, @CreatedAt, @CreatedBy, @Name)";
+            VALUES (@Active, @CreatedAt, @CreatedBy, @Name, 0)";
 
         model.CreatedAt = DateTimeOffset.UtcNow;
 
@@ -34,14 +34,23 @@ public class DepotRepositoryDapper : IDepotRepository
 
     public async Task<IEnumerable<Depot>> GetAllAsync()
     {
-        const string sql = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots ORDER BY Id DESC";
+        const string sql = @"
+            SELECT Id, Active, CreatedAt, CreatedBy, Name 
+            FROM Depots 
+            WHERE IsDeleted = 0 
+            ORDER BY Id DESC";
+
         using var conn = GetConnection();
         return await conn.QueryAsync<Depot>(sql);
     }
 
     public async Task<Depot> GetByIdAsync(long id)
     {
-        const string sql = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots WHERE Id = @Id";
+        const string sql = @"
+            SELECT Id, Active, CreatedAt, CreatedBy, Name 
+            FROM Depots 
+            WHERE Id = @Id AND IsDeleted = 0";
+
         using var conn = GetConnection();
         return await conn.QuerySingleOrDefaultAsync<Depot>(sql, new { Id = id }) ?? new Depot();
     }
@@ -52,7 +61,7 @@ public class DepotRepositoryDapper : IDepotRepository
             UPDATE Depots SET
                 Active = @Active,
                 Name = @Name
-            WHERE Id = @Id";
+            WHERE Id = @Id AND IsDeleted = 0";
 
         using var conn = GetConnection();
         var affected = await conn.ExecuteAsync(sql, model);
@@ -61,7 +70,10 @@ public class DepotRepositoryDapper : IDepotRepository
 
     public async Task<bool> DeleteAsync(long id)
     {
-        const string sql = "DELETE FROM Depots WHERE Id = @Id";
+        const string sql = @"
+            UPDATE Depots SET IsDeleted = 1 
+            WHERE Id = @Id AND IsDeleted = 0";
+
         using var conn = GetConnection();
         var affected = await conn.ExecuteAsync(sql, new { Id = id });
         return affected > 0;

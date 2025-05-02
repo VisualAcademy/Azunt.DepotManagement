@@ -23,9 +23,9 @@ public class DepotRepositoryAdoNet : IDepotRepository
         using var conn = GetConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO Depots (Active, CreatedAt, CreatedBy, Name)
+            INSERT INTO Depots (Active, CreatedAt, CreatedBy, Name, IsDeleted)
             OUTPUT INSERTED.Id
-            VALUES (@Active, @CreatedAt, @CreatedBy, @Name)";
+            VALUES (@Active, @CreatedAt, @CreatedBy, @Name, 0)";
         cmd.Parameters.AddWithValue("@Active", model.Active ?? true);
         cmd.Parameters.AddWithValue("@CreatedAt", DateTimeOffset.UtcNow);
         cmd.Parameters.AddWithValue("@CreatedBy", model.CreatedBy ?? (object)DBNull.Value);
@@ -41,7 +41,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
         var result = new List<Depot>();
         using var conn = GetConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots ORDER BY Id DESC";
+        cmd.CommandText = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots WHERE IsDeleted = 0 ORDER BY Id DESC";
 
         await conn.OpenAsync();
         using var reader = await cmd.ExecuteReaderAsync();
@@ -64,7 +64,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
     {
         using var conn = GetConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots WHERE Id = @Id";
+        cmd.CommandText = "SELECT Id, Active, CreatedAt, CreatedBy, Name FROM Depots WHERE Id = @Id AND IsDeleted = 0";
         cmd.Parameters.AddWithValue("@Id", id);
 
         await conn.OpenAsync();
@@ -92,7 +92,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
             UPDATE Depots SET
                 Active = @Active,
                 Name = @Name
-            WHERE Id = @Id";
+            WHERE Id = @Id AND IsDeleted = 0";
         cmd.Parameters.AddWithValue("@Active", model.Active ?? true);
         cmd.Parameters.AddWithValue("@Name", model.Name ?? (object)DBNull.Value);
         cmd.Parameters.AddWithValue("@Id", model.Id);
@@ -105,7 +105,7 @@ public class DepotRepositoryAdoNet : IDepotRepository
     {
         using var conn = GetConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM Depots WHERE Id = @Id";
+        cmd.CommandText = "UPDATE Depots SET IsDeleted = 1 WHERE Id = @Id AND IsDeleted = 0";
         cmd.Parameters.AddWithValue("@Id", id);
 
         await conn.OpenAsync();
