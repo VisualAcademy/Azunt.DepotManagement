@@ -15,7 +15,10 @@
     </select>
 
     <!-- 직접 입력용 텍스트박스: 필요없으면 제거 -->
-    <input class="form-control" type="text" placeholder="Or type a new depot..." @bind="SelectedDepot" />
+    <!-- 텍스트박스 입력 시에도 SelectedDepotChanged 호출 -->
+    <input class="form-control" type="text" placeholder="Or type a new depot..."
+           @bind="SelectedDepot"
+           @oninput="OnInputChanged" />
 </div>
 
 @code {
@@ -45,5 +48,11 @@
             SelectedDepot = selected;
             await SelectedDepotChanged.InvokeAsync(SelectedDepot);
         }
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        SelectedDepot = e.Value?.ToString() ?? "";
+        await SelectedDepotChanged.InvokeAsync(SelectedDepot);
     }
 }
