@@ -41,7 +41,7 @@ public partial class Manage : ComponentBase
     {
         PageNumber = 1,
         PageIndex = 0,
-        PageSize = 10,
+        PageSize = 8,
         PagerButtonCount = 5
     };
     #endregion
