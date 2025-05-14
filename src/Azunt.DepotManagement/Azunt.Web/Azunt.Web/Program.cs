@@ -44,7 +44,7 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 builder.Services.AddDependencyInjectionContainerForDepotApp(
     connectionString,
-    DepotServicesRegistrationExtensions.RepositoryMode.Dapper,
+    Azunt.Models.Enums.RepositoryMode.Dapper,
     ServiceLifetime.Transient);
 builder.Services.AddTransient<DepotAppDbContextFactory>();
 
