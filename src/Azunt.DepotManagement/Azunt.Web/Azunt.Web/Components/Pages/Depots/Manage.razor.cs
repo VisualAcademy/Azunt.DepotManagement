@@ -47,6 +47,16 @@ public partial class Manage : ComponentBase
     #endregion
 
     #region Lifecycle
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntimeInjector.InvokeVoidAsync(
+                "Azunt.UI.applyTruncation",
+                ".text-truncate-name", 10, 150, true);
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (string.IsNullOrEmpty(UserId) || string.IsNullOrEmpty(UserName))

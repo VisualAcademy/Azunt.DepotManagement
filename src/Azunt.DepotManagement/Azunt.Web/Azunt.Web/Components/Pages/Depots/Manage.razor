@@ -68,7 +68,7 @@
                             @foreach (var m in models)
                             {
                                 <tr>
-                                    <td class="text-center text-nowrap">@m.Name</td>
+                                    <td class="text-center text-nowrap"><span class="text-truncate-name">@m.Name</span></td>
 
                                     @if (!SimpleMode)
                                     {
