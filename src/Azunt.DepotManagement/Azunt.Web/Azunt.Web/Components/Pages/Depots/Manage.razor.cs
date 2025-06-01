@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.JSInterop;
 using Azunt.DepotManagement;
 using Azunt.Web.Components.Pages.Depots.Components;
+using Azunt.Components.Dialogs;
 
 namespace Azunt.Web.Pages.Depots;
 
