@@ -24,6 +24,10 @@
 
         <!-- 저작권 정보 -->
         <Copyright>© 2025 Hawaso. All rights reserved.</Copyright>
+
+        <!-- README & License for NuGet -->
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -34,6 +38,12 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.4" />
         <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.4" />
+    </ItemGroup>
+
+    <!-- Include solution-root README and LICENSE in the NuGet package -->
+    <ItemGroup>
+        <None Include="..\..\..\README.md" Pack="true" PackagePath="" />
+        <None Include="..\..\..\LICENSE" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>
