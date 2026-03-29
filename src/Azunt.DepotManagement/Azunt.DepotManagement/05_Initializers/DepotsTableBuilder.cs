@@ -9,43 +9,46 @@ namespace Azunt.DepotManagement;
 
 public class DepotsTableBuilder
 {
-    private readonly string _masterConnectionString;
+    private readonly string _connectionString;
     private readonly ILogger<DepotsTableBuilder> _logger;
 
-    public DepotsTableBuilder(string masterConnectionString, ILogger<DepotsTableBuilder> logger)
+    public DepotsTableBuilder(string connectionString, ILogger<DepotsTableBuilder> logger)
     {
-        _masterConnectionString = masterConnectionString;
+        _connectionString = connectionString;
         _logger = logger;
-    }
-
-    public void BuildTenantDatabases()
-    {
-        var tenantConnectionStrings = GetTenantConnectionStrings();
-
-        foreach (var connStr in tenantConnectionStrings)
-        {
-            try
-            {
-                EnsureDepotsTable(connStr);
-                _logger.LogInformation($"Depots table processed (tenant DB): {connStr}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"[{connStr}] Error processing tenant DB");
-            }
-        }
     }
 
     public void BuildMasterDatabase()
     {
         try
         {
-            EnsureDepotsTable(_masterConnectionString);
-            _logger.LogInformation("Depots table processed (master DB)");
+            EnsureDepotsTable(_connectionString);
+            _logger.LogInformation("Depots table processed (master DB).");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing master DB");
+            _logger.LogError(ex, "Error processing Depots table (master DB).");
+        }
+    }
+
+    public void BuildTenantDatabases()
+    {
+        var tenantConnectionStrings = GetTenantConnectionStrings();
+
+        for (int i = 0; i < tenantConnectionStrings.Count; i++)
+        {
+            var connStr = tenantConnectionStrings[i];
+            var tenantIndex = i + 1;
+
+            try
+            {
+                EnsureDepotsTable(connStr);
+                _logger.LogInformation("Depots table processed (tenant DB #{Index}).", tenantIndex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing tenant DB #{Index}.", tenantIndex);
+            }
         }
     }
 
@@ -53,21 +56,18 @@ public class DepotsTableBuilder
     {
         var result = new List<string>();
 
-        using (var connection = new SqlConnection(_masterConnectionString))
-        {
-            connection.Open();
-            var cmd = new SqlCommand("SELECT ConnectionString FROM dbo.Tenants", connection);
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
 
-            using (var reader = cmd.ExecuteReader())
+        using var cmd = new SqlCommand("SELECT ConnectionString FROM dbo.Tenants", connection);
+        using var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var connStr = reader["ConnectionString"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(connStr))
             {
-                while (reader.Read())
-                {
-                    var connectionString = reader["ConnectionString"]?.ToString();
-                    if (!string.IsNullOrEmpty(connectionString))
-                    {
-                        result.Add(connectionString);
-                    }
-                }
+                result.Add(connStr);
             }
         }
 
@@ -76,96 +76,228 @@ public class DepotsTableBuilder
 
     private void EnsureDepotsTable(string connectionString)
     {
-        using (var connection = new SqlConnection(connectionString))
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+
+        using var checkTableCmd = new SqlCommand(@"
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA = 'dbo'
+  AND TABLE_NAME = 'Depots';", connection);
+
+        int exists = (int)checkTableCmd.ExecuteScalar();
+
+        if (exists == 0)
         {
-            connection.Open();
+            using var createCmd = new SqlCommand(@"
+-- [0][0] 창고: Depots
+CREATE TABLE [dbo].[Depots]
+(
+    [Id] BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [Active] BIT NOT NULL CONSTRAINT [DF_Depots_Active] DEFAULT ((1)),
+    [IsDeleted] BIT NOT NULL CONSTRAINT [DF_Depots_IsDeleted] DEFAULT ((0)),
+    [CreatedAt] DATETIMEOFFSET(7) NOT NULL CONSTRAINT [DF_Depots_CreatedAt] DEFAULT (SYSDATETIMEOFFSET()),
+    [CreatedBy] NVARCHAR(255) NULL,
+    [Name] NVARCHAR(MAX) NULL
+);", connection);
 
-            var cmdCheck = new SqlCommand(@"
-                SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES 
-                WHERE TABLE_NAME = 'Depots'", connection);
-
-            int tableCount = (int)cmdCheck.ExecuteScalar();
-
-            if (tableCount == 0)
+            createCmd.ExecuteNonQuery();
+            _logger.LogInformation("Depots table created.");
+        }
+        else
+        {
+            var expectedColumns = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                var cmdCreate = new SqlCommand(@"
-                    CREATE TABLE [dbo].[Depots] (
-                        [Id] BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                        [Active] BIT NOT NULL DEFAULT(1),
-                        [IsDeleted] BIT NOT NULL DEFAULT(0),
-                        [CreatedAt] DATETIMEOFFSET(7) NOT NULL,
-                        [CreatedBy] NVARCHAR(255) NULL,
-                        [Name] NVARCHAR(MAX) NULL
-                    )", connection);
+                ["Active"] = "BIT NULL",
+                ["IsDeleted"] = "BIT NULL",
+                ["CreatedAt"] = "DATETIMEOFFSET(7) NULL",
+                ["CreatedBy"] = "NVARCHAR(255) NULL",
+                ["Name"] = "NVARCHAR(MAX) NULL"
+            };
 
-                cmdCreate.ExecuteNonQuery();
-
-                _logger.LogInformation("Depots table created.");
-            }
-            else
+            foreach (var column in expectedColumns)
             {
-                var expectedColumns = new Dictionary<string, string>
+                using var checkColumnCmd = new SqlCommand(@"
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'dbo'
+  AND TABLE_NAME = 'Depots'
+  AND COLUMN_NAME = @ColumnName;", connection);
+
+                checkColumnCmd.Parameters.AddWithValue("@ColumnName", column.Key);
+
+                int columnExists = (int)checkColumnCmd.ExecuteScalar();
+
+                if (columnExists == 0)
                 {
-                    ["Active"] = "BIT NOT NULL DEFAULT(1)",
-                    ["IsDeleted"] = "BIT NOT NULL DEFAULT(0)",
-                    ["CreatedAt"] = "DATETIMEOFFSET(7) NOT NULL",
-                    ["CreatedBy"] = "NVARCHAR(255) NULL",
-                    ["Name"] = "NVARCHAR(MAX) NULL"
-                };
+                    using var alterCmd = new SqlCommand($@"
+ALTER TABLE [dbo].[Depots]
+ADD [{column.Key}] {column.Value};", connection);
 
-                foreach (var kvp in expectedColumns)
-                {
-                    var columnName = kvp.Key;
-
-                    var cmdColumnCheck = new SqlCommand(@"
-                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-                        WHERE TABLE_NAME = 'Depots' AND COLUMN_NAME = @ColumnName", connection);
-                    cmdColumnCheck.Parameters.AddWithValue("@ColumnName", columnName);
-
-                    int colExists = (int)cmdColumnCheck.ExecuteScalar();
-
-                    if (colExists == 0)
-                    {
-                        var alterCmd = new SqlCommand(
-                            $"ALTER TABLE [dbo].[Depots] ADD [{columnName}] {kvp.Value}", connection);
-                        alterCmd.ExecuteNonQuery();
-
-                        _logger.LogInformation($"Column added: {columnName} ({kvp.Value})");
-                    }
+                    alterCmd.ExecuteNonQuery();
+                    _logger.LogInformation("Column [{Column}] added to Depots table.", column.Key);
                 }
             }
 
-            var cmdCountRows = new SqlCommand("SELECT COUNT(*) FROM [dbo].[Depots]", connection);
-            int rowCount = (int)cmdCountRows.ExecuteScalar();
+            EnsurePrimaryKeyOnId(connection);
+            EnsureActiveDefault(connection);
+            EnsureIsDeletedDefault(connection);
+            EnsureCreatedAtDefault(connection);
+        }
 
-            if (rowCount == 0)
-            {
-                var cmdInsertDefaults = new SqlCommand(@"
-                    INSERT INTO [dbo].[Depots] (Active, IsDeleted, CreatedAt, CreatedBy, Name)
-                    VALUES
-                        (1, 0, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 1'),
-                        (1, 0, SYSDATETIMEOFFSET(), 'System', 'Initial Depot 2')", connection);
+        var cmdCountRows = new SqlCommand("SELECT COUNT(*) FROM [dbo].[Depots]", connection);
+        int rowCount = (int)cmdCountRows.ExecuteScalar();
 
-                int inserted = cmdInsertDefaults.ExecuteNonQuery();
-                _logger.LogInformation($"Depots 기본 데이터 {inserted}건 삽입 완료");
-            }
+        if (rowCount == 0)
+        {
+            using var cmdInsertDefaults = new SqlCommand(@"
+INSERT INTO [dbo].[Depots] ([Active], [IsDeleted], [CreatedAt], [CreatedBy], [Name])
+VALUES
+    (1, 0, SYSDATETIMEOFFSET(), N'System', N'Initial Depot 1'),
+    (1, 0, SYSDATETIMEOFFSET(), N'System', N'Initial Depot 2');", connection);
+
+            int inserted = cmdInsertDefaults.ExecuteNonQuery();
+            _logger.LogInformation("Inserted default depots: {Count} rows.", inserted);
         }
     }
 
-    public static void Run(IServiceProvider services, bool forMaster)
+    private void EnsurePrimaryKeyOnId(SqlConnection connection)
+    {
+        using var cmd = new SqlCommand(@"
+IF EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo'
+      AND TABLE_NAME = 'Depots'
+      AND COLUMN_NAME = 'Id'
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.key_constraints kc
+        WHERE kc.parent_object_id = OBJECT_ID(N'[dbo].[Depots]')
+          AND kc.type = 'PK'
+    )
+    BEGIN
+        ALTER TABLE [dbo].[Depots]
+        ADD PRIMARY KEY CLUSTERED ([Id] ASC);
+    END
+END", connection);
+
+        cmd.ExecuteNonQuery();
+    }
+
+    private void EnsureActiveDefault(SqlConnection connection)
+    {
+        using var cmd = new SqlCommand(@"
+IF EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo'
+      AND TABLE_NAME = 'Depots'
+      AND COLUMN_NAME = 'Active'
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        INNER JOIN sys.columns c
+            ON dc.parent_object_id = c.object_id
+           AND dc.parent_column_id = c.column_id
+        WHERE dc.parent_object_id = OBJECT_ID(N'[dbo].[Depots]')
+          AND c.name = N'Active'
+    )
+    BEGIN
+        ALTER TABLE [dbo].[Depots]
+        ADD CONSTRAINT [DF_Depots_Active] DEFAULT ((1)) FOR [Active];
+    END
+END", connection);
+
+        cmd.ExecuteNonQuery();
+    }
+
+    private void EnsureIsDeletedDefault(SqlConnection connection)
+    {
+        using var cmd = new SqlCommand(@"
+IF EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo'
+      AND TABLE_NAME = 'Depots'
+      AND COLUMN_NAME = 'IsDeleted'
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        INNER JOIN sys.columns c
+            ON dc.parent_object_id = c.object_id
+           AND dc.parent_column_id = c.column_id
+        WHERE dc.parent_object_id = OBJECT_ID(N'[dbo].[Depots]')
+          AND c.name = N'IsDeleted'
+    )
+    BEGIN
+        ALTER TABLE [dbo].[Depots]
+        ADD CONSTRAINT [DF_Depots_IsDeleted] DEFAULT ((0)) FOR [IsDeleted];
+    END
+END", connection);
+
+        cmd.ExecuteNonQuery();
+    }
+
+    private void EnsureCreatedAtDefault(SqlConnection connection)
+    {
+        using var cmd = new SqlCommand(@"
+IF EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo'
+      AND TABLE_NAME = 'Depots'
+      AND COLUMN_NAME = 'CreatedAt'
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        INNER JOIN sys.columns c
+            ON dc.parent_object_id = c.object_id
+           AND dc.parent_column_id = c.column_id
+        WHERE dc.parent_object_id = OBJECT_ID(N'[dbo].[Depots]')
+          AND c.name = N'CreatedAt'
+    )
+    BEGIN
+        ALTER TABLE [dbo].[Depots]
+        ADD CONSTRAINT [DF_Depots_CreatedAt] DEFAULT (SYSDATETIMEOFFSET()) FOR [CreatedAt];
+    END
+END", connection);
+
+        cmd.ExecuteNonQuery();
+    }
+
+    public static void Run(IServiceProvider services, bool forMaster, string? optionalConnectionString = null)
     {
         try
         {
             var logger = services.GetRequiredService<ILogger<DepotsTableBuilder>>();
             var config = services.GetRequiredService<IConfiguration>();
-            var masterConnectionString = config.GetConnectionString("DefaultConnection");
 
-            if (string.IsNullOrEmpty(masterConnectionString))
+            string connectionString;
+            if (!string.IsNullOrWhiteSpace(optionalConnectionString))
             {
-                throw new InvalidOperationException("DefaultConnection is not configured in appsettings.json.");
+                connectionString = optionalConnectionString!;
+            }
+            else
+            {
+                var tempConnectionString = config.GetConnectionString("DefaultConnection");
+                if (string.IsNullOrWhiteSpace(tempConnectionString))
+                {
+                    throw new InvalidOperationException("DefaultConnection is not configured in appsettings.json.");
+                }
+
+                connectionString = tempConnectionString;
             }
 
-            var builder = new DepotsTableBuilder(masterConnectionString, logger);
+            var builder = new DepotsTableBuilder(connectionString, logger);
 
             if (forMaster)
             {
@@ -179,7 +311,7 @@ public class DepotsTableBuilder
         catch (Exception ex)
         {
             var fallbackLogger = services.GetService<ILogger<DepotsTableBuilder>>();
-            fallbackLogger?.LogError(ex, "Error while processing Depots table.");
+            fallbackLogger?.LogError(ex, "Error running DepotsTableBuilder.Run");
         }
     }
 }
